@@ -20,7 +20,7 @@
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <ItemGroup>
     <PackageReference Include="elmah" Version="1.2.2" />
-    <PackageReference Include="MongoDB.Driver" Version="2.2.4" />
+    <PackageReference Include="MongoDB.Driver" Version="2.11.5" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.configuration" />
