@@ -1,15 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RootNamespace>Elmah</RootNamespace>
-    <TargetFrameworks>net452;net472</TargetFrameworks>
+    <TargetFrameworks>net472</TargetFrameworks>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\src\</SolutionDir>
     <AssemblyTitle>Elmah.MongoDB</AssemblyTitle>
     <Product>Elmah.MongoDB</Product>
     <Description>MongoDB provider for Elmah</Description>
     <Copyright>Copyright © 2011 Simon Green. All Rights Reserved.</Copyright>
-    <AssemblyVersion>1.3.0.0</AssemblyVersion>
-    <FileVersion>1.3.0.0</FileVersion>
+    <AssemblyVersion>1.3.1.0</AssemblyVersion>
+    <FileVersion>1.3.1.0</FileVersion>
     <OutputPath>bin\$(Configuration)\</OutputPath>
+	<LangVersion>latest</LangVersion>
+	<Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>full</DebugType>
@@ -20,7 +22,7 @@
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <ItemGroup>
     <PackageReference Include="elmah" Version="1.2.2" />
-    <PackageReference Include="MongoDB.Driver" Version="2.11.5" />
+    <PackageReference Include="MongoDB.Driver" Version="2.18.0" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.configuration" />

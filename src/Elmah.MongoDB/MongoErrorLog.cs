@@ -7,245 +7,250 @@ using System.Collections.Specialized;
 
 namespace Elmah
 {
-	public class MongoErrorLog : ErrorLog
-	{
-		private readonly string _connectionString;
-		private readonly string _collectionName;
-		private readonly int _maxDocuments;
-		private readonly int _maxSize;
+    public class MongoErrorLog : ErrorLog
+    {
+        private readonly string _connectionString;
+        private readonly string? _collectionName;
+        private readonly int _maxDocuments;
+        private readonly int _maxSize;
 
-		private IMongoCollection<BsonDocument> _collection;
+        private IMongoCollection<BsonDocument>? _collection;
 
-		private const int MaxAppNameLength = 60;
-		private const int DefaultMaxDocuments = int.MaxValue;
-		private const int DefaultMaxSize = 100 * 1024 * 1024;   // in bytes (100mb)
+        private const int MaxAppNameLength = 60;
+        private const int DefaultMaxDocuments = int.MaxValue;
+        private const int DefaultMaxSize = 100 * 1024 * 1024;   // in bytes (100mb)
 
-		private static readonly object Sync = new object();
+        private static readonly object Sync = new();
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="MongoErrorLog"/> class
-		/// using a dictionary of configured settings.
-		/// </summary>
-		public MongoErrorLog(IDictionary config)
-		{
-			if (config == null)
-				throw new ArgumentNullException("config");
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MongoErrorLog"/> class
+        /// using a dictionary of configured settings.
+        /// </summary>
+        public MongoErrorLog(IDictionary config)
+        {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config));
 
-			var connectionString = GetConnectionString(config);
+            var connectionString = GetConnectionString(config);
 
-			//
-			// If there is no connection string to use then throw an 
-			// exception to abort construction.
-			//
+            //
+            // If there is no connection string to use then throw an 
+            // exception to abort construction.
+            //
 
-			if (connectionString.Length == 0)
-				throw new ApplicationException("Connection string is missing for the Elmah Error Log.");
+            if (connectionString.Length == 0)
+                throw new ApplicationException("Connection string is missing for the Elmah Error Log.");
 
-			_connectionString = connectionString;
+            _connectionString = connectionString;
 
-			//
-			// Set the application name as this implementation provides
-			// per-application isolation over a single store.
-			//
+            //
+            // Set the application name as this implementation provides
+            // per-application isolation over a single store.
+            //
 
-			var appName = (string)config["applicationName"] ?? string.Empty;
+            var appName = (string)config["applicationName"] ?? string.Empty;
 
-			if (appName.Length > MaxAppNameLength)
-			{
-				throw new ApplicationException(string.Format(
-				  "Application name is too long. Maximum length allowed is {0} characters.",
-				  MaxAppNameLength.ToString("N0")));
-			}
+            if (appName.Length > MaxAppNameLength)
+            {
+                throw new ApplicationException(string.Format(
+                  "Application name is too long. Maximum length allowed is {0} characters.",
+                  MaxAppNameLength.ToString("N0")));
+            }
 
-			ApplicationName = appName;
+            ApplicationName = appName;
 
-			_collectionName = appName.Length > 0 ? "Elmah-" + appName : "Elmah";
-			_maxDocuments = GetCollectionLimit(config);
-			_maxSize = GetCollectionSize(config);
+            _collectionName = appName.Length > 0 ? "Elmah-" + appName : "Elmah";
+            _maxDocuments = GetCollectionLimit(config);
+            _maxSize = GetCollectionSize(config);
 
-			Initialize();
-		}
+            Initialize();
+        }
 
-		/// <summary>
-		/// Initializes a new instance of the <see cref="SqlErrorLog"/> class
-		/// to use a specific connection string for connecting to the database.
-		/// </summary>
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SqlErrorLog"/> class
+        /// to use a specific connection string for connecting to the database.
+        /// </summary>
+        public MongoErrorLog(string connectionString)
+        {
+            if (connectionString == null)
+                throw new ArgumentNullException(nameof(connectionString));
 
-		public MongoErrorLog(string connectionString)
-		{
-			if (connectionString == null)
-				throw new ArgumentNullException("connectionString");
+            if (connectionString.Length == 0)
+                throw new ArgumentException(null, nameof(connectionString));
 
-			if (connectionString.Length == 0)
-				throw new ArgumentException(null, "connectionString");
+            _connectionString = connectionString;
 
-			_connectionString = connectionString;
+            Initialize();
+        }
 
-			Initialize();
-		}
+        static MongoErrorLog()
+        {
+            BsonSerializer.RegisterSerializer(typeof(NameValueCollection), NameValueCollectionSerializer.Instance);
+            BsonClassMap.RegisterClassMap<Error>(cm =>
+            {
+                cm.MapProperty(c => c.ApplicationName);
+                cm.MapProperty(c => c.HostName).SetElementName("host");
+                cm.MapProperty(c => c.Type).SetElementName("type");
+                cm.MapProperty(c => c.Source).SetElementName("source");
+                cm.MapProperty(c => c.Message).SetElementName("message");
+                cm.MapProperty(c => c.Detail).SetElementName("detail");
+                cm.MapProperty(c => c.User).SetElementName("user");
+                cm.MapProperty(c => c.Time).SetElementName("time");
+                cm.MapProperty(c => c.StatusCode).SetElementName("statusCode");
+                cm.MapProperty(c => c.WebHostHtmlMessage).SetElementName("webHostHtmlMessage");
+                cm.MapField("_serverVariables").SetElementName("serverVariables");
+                cm.MapField("_queryString").SetElementName("queryString");
+                cm.MapField("_form").SetElementName("form");
+                cm.MapField("_cookies").SetElementName("cookies");
+            });
+        }
 
-		static MongoErrorLog()
-		{
-			BsonSerializer.RegisterSerializer(typeof(NameValueCollection), NameValueCollectionSerializer.Instance);
-			BsonClassMap.RegisterClassMap<Error>(cm =>
-			{
-				cm.MapProperty(c => c.ApplicationName);
-				cm.MapProperty(c => c.HostName).SetElementName("host");
-				cm.MapProperty(c => c.Type).SetElementName("type");
-				cm.MapProperty(c => c.Source).SetElementName("source");
-				cm.MapProperty(c => c.Message).SetElementName("message");
-				cm.MapProperty(c => c.Detail).SetElementName("detail");
-				cm.MapProperty(c => c.User).SetElementName("user");
-				cm.MapProperty(c => c.Time).SetElementName("time");
-				cm.MapProperty(c => c.StatusCode).SetElementName("statusCode");
-				cm.MapProperty(c => c.WebHostHtmlMessage).SetElementName("webHostHtmlMessage");
-				cm.MapField("_serverVariables").SetElementName("serverVariables");
-				cm.MapField("_queryString").SetElementName("queryString");
-				cm.MapField("_form").SetElementName("form");
-				cm.MapField("_cookies").SetElementName("cookies");
-			});
+        private void Initialize()
+        {
+            lock (Sync)
+            {
+                var mongoUrl = MongoUrl.Create(_connectionString);
+                var mongoClient = new MongoClient(mongoUrl);
+                var database = mongoClient.GetDatabase(mongoUrl.DatabaseName);
 
-		}
+                if (database.GetCollection<BsonDocument>(_collectionName) == null)
+                {
+                    var options = new CreateCollectionOptions
+                    {
+                        Capped = true,
+                        MaxSize = _maxSize
+                    };
+                    if (_maxDocuments != int.MaxValue)
+                        options.MaxDocuments = _maxDocuments;
+                    database.CreateCollection(_collectionName, options);
+                }
 
-		private void Initialize()
-		{
-			lock (Sync)
-			{
-				var mongoUrl = MongoUrl.Create(_connectionString);
-				var mongoClient = new MongoClient(mongoUrl);
-				var database = mongoClient.GetDatabase(mongoUrl.DatabaseName);
+                _collection = database.GetCollection<BsonDocument>(_collectionName);
 
-				if (database.GetCollection<BsonDocument>(_collectionName) == null)
-				{
-					var options = new CreateCollectionOptions();
-					options.Capped = true;
-					options.AutoIndexId = true;
-					options.MaxSize = _maxSize;
-					if (_maxDocuments != int.MaxValue)
-						options.MaxDocuments = _maxDocuments;
-					database.CreateCollection(_collectionName, options);
-				}
+                //create an index on time
+                try
+                {
+                    IndexKeysDefinition<BsonDocument> keys = "{ time: -1 }";
+                    _collection.Indexes.CreateOne(
+                        new CreateIndexModel<BsonDocument>(
+                            keys,
+                            new CreateIndexOptions
+                            {
+                                Background = true,
+                                Name = "ix_time"
+                            })
+                        );
+                }
+                catch
+                {
+                    // ignore any error
+                }
+            }
+        }
 
-				//create an index on time
-				try
-				{
-					IndexKeysDefinition<BsonDocument> keys = "{ time: -1 }";
-					_collection.Indexes.CreateOne(keys, new CreateIndexOptions { Name = "ix_time" });
-				}
-				catch { }
+        /// <summary>
+        /// Gets the name of this error log implementation.
+        /// </summary>
+        public override string Name
+        {
+            get { return "MongoDB Error Log"; }
+        }
 
-				_collection = database.GetCollection<BsonDocument>(_collectionName);
-			}
-		}
+        /// <summary>
+        /// Gets the connection string used by the log to connect to the database.
+        /// </summary>
+        public virtual string ConnectionString
+        {
+            get { return _connectionString; }
+        }
 
-		/// <summary>
-		/// Gets the name of this error log implementation.
-		/// </summary>
-		public override string Name
-		{
-			get { return "MongoDB Error Log"; }
-		}
+        /// <summary>
+        /// Logs an error in log for the application.
+        /// </summary>
+        /// <param name="error"></param>
+        public override string Log(Error error)
+        {
+            if (error == null)
+                throw new ArgumentNullException(nameof(error));
 
-		/// <summary>
-		/// Gets the connection string used by the log to connect to the database.
-		/// </summary>
-		public virtual string ConnectionString
-		{
-			get { return _connectionString; }
-		}
+            error.ApplicationName = ApplicationName;
+            var document = error.ToBsonDocument();
 
-		/// <summary>
-		/// Logs an error in log for the application.
-		/// </summary>
-		/// <param name="error"></param>
-		/// <returns></returns>
-		public override string Log(Error error)
-		{
-			if (error == null)
-				throw new ArgumentNullException("error");
+            var id = ObjectId.GenerateNewId();
+            document.Add("_id", id);
 
-			error.ApplicationName = ApplicationName;
-			var document = error.ToBsonDocument();
+            _collection.InsertOne(document);
 
-			var id = ObjectId.GenerateNewId();
-			document.Add("_id", id);
+            return id.ToString();
+        }
 
-			_collection.InsertOne(document);
+        /// <summary>
+        /// Retrieves a single application error from log given its
+        /// identifier, or null if it does not exist.
+        /// </summary>
+        /// <param name="id"></param>
+        public override ErrorLogEntry? GetError(string id)
+        {
+            if (id == null) throw new ArgumentNullException(nameof(id));
+            if (id.Length == 0) throw new ArgumentException(null, nameof(id));
 
-			return id.ToString();
-		}
+            var document = _collection.Find(new BsonDocument("_id", new ObjectId(id))).FirstOrDefault();
 
-		/// <summary>
-		/// Retrieves a single application error from log given its
-		/// identifier, or null if it does not exist.
-		/// </summary>
-		/// <param name="id"></param>
-		/// <returns></returns>
-		public override ErrorLogEntry GetError(string id)
-		{
-			if (id == null) throw new ArgumentNullException("id");
-			if (id.Length == 0) throw new ArgumentException(null, "id");
+            if (document == null)
+                return null;
 
-			var document = _collection.Find(new BsonDocument("_id", new ObjectId(id))).FirstOrDefault();
+            var error = BsonSerializer.Deserialize<Error>(document);
 
-			if (document == null)
-				return null;
+            return new ErrorLogEntry(this, id, error);
+        }
 
-			var error = BsonSerializer.Deserialize<Error>(document);
+        /// <summary>
+        /// Retrieves a page of application errors from the log in
+        /// descending order of logged time.
+        /// </summary>
+        /// <param name="pageIndex"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="errorEntryList"></param>
+        public override int GetErrors(int pageIndex, int pageSize, IList errorEntryList)
+        {
+            if (pageIndex < 0) throw new ArgumentOutOfRangeException(nameof(pageIndex), pageIndex, null);
+            if (pageSize < 0) throw new ArgumentOutOfRangeException(nameof(pageSize), pageSize, null);
 
-			return new ErrorLogEntry(this, id, error);
-		}
+            // Need to force documents into descending date order
+            var sort = Builders<BsonDocument>.Sort.Descending("time");
+            var documents = _collection
+                .Find(new BsonDocument())
+                .Sort(sort)
+                .Skip(pageIndex * pageSize)
+                .Limit(pageSize)
+                .ToList();
 
-		/// <summary>
-		/// Retrieves a page of application errors from the log in
-		/// descending order of logged time.
-		/// </summary>
-		/// <param name="pageIndex"></param>
-		/// <param name="pageSize"></param>
-		/// <param name="errorEntryList"></param>
-		/// <returns></returns>
-		public override int GetErrors(int pageIndex, int pageSize, IList errorEntryList)
-		{
-			if (pageIndex < 0) throw new ArgumentOutOfRangeException("pageIndex", pageIndex, null);
-			if (pageSize < 0) throw new ArgumentOutOfRangeException("pageSize", pageSize, null);
+            foreach (var document in documents)
+            {
+                var id = document["_id"].AsObjectId.ToString();
+                var error = BsonSerializer.Deserialize<Error>(document);
+                error.Time = error.Time.ToLocalTime();
+                errorEntryList.Add(new ErrorLogEntry(this, id, error));
+            }
 
-			// Need to force documents into descending date order
-			var sort = Builders<BsonDocument>.Sort.Descending("time");
-			var documents = _collection.Find(new BsonDocument())
-			  .Sort(sort)
-			  .Skip(pageIndex * pageSize)
-			  .Limit(pageSize).ToList();
+            return (int)_collection.CountDocuments(FilterDefinition<BsonDocument>.Empty);
+        }
 
-			foreach (var document in documents)
-			{
-				var id = document["_id"].AsObjectId.ToString();
-				var error = BsonSerializer.Deserialize<Error>(document);
-				error.Time = error.Time.ToLocalTime();
-				errorEntryList.Add(new ErrorLogEntry(this, id, error));
-			}
+        public static int GetCollectionLimit(IDictionary config)
+        {
+            return int.TryParse((string)config["maxDocuments"], out int result) ? result : DefaultMaxDocuments;
+        }
 
-			return (int)_collection.Count(new BsonDocument());
-		}
+        public static int GetCollectionSize(IDictionary config)
+        {
+            return int.TryParse((string)config["maxSize"], out int result) ? result : DefaultMaxSize;
+        }
 
-		public static int GetCollectionLimit(IDictionary config)
-		{
-			int result;
-			return int.TryParse((string)config["maxDocuments"], out result) ? result : DefaultMaxDocuments;
-		}
+        public string GetConnectionString(IDictionary config)
+        {
+            var connectionStringName = config["connectionStringName"].ToString();
 
-		public static int GetCollectionSize(IDictionary config)
-		{
-			int result;
-			return int.TryParse((string)config["maxSize"], out result) ? result : DefaultMaxSize;
-		}
-
-		public string GetConnectionString(IDictionary config)
-		{
-			var connectionStringName = config["connectionStringName"].ToString();
-
-			var connectionString = System.Configuration.ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
-
-			return connectionString;
-		}
-	}
+            return System.Configuration.ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
+        }
+    }
 }

@@ -5,65 +5,59 @@ using System.Collections.Specialized;
 
 namespace Elmah
 {
-  public class NameValueCollectionSerializer : SerializerBase<NameValueCollection>
-  {
-    private static readonly NameValueCollectionSerializer instance = new NameValueCollectionSerializer();
-
-    public static NameValueCollectionSerializer Instance
+    public class NameValueCollectionSerializer : SerializerBase<NameValueCollection>
     {
-      get { return instance; }
-    }
+        public static NameValueCollectionSerializer Instance { get; } = new NameValueCollectionSerializer();
 
-    public override NameValueCollection Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
-    {
-      var bsonReader = context.Reader;
-      var bsonType = bsonReader.GetCurrentBsonType();
-      if (bsonType == BsonType.Null)
-      {
-        bsonReader.ReadNull();
-        return null;
-      }
-
-      var nvc = new NameValueCollection();
-
-      bsonReader.ReadStartArray();
-      while (bsonReader.ReadBsonType() != BsonType.EndOfDocument)
-      {
-        bsonReader.ReadStartArray();
-        var key = bsonReader.ReadString();
-        var val = bsonReader.ReadString();
-        bsonReader.ReadEndArray();
-        nvc.Add(key, val);
-      }
-      bsonReader.ReadEndArray();
-
-      return nvc;
-    }
-
-    public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, NameValueCollection value)
-    {
-      var bsonWriter = context.Writer;
-      if (value == null)
-      {
-        bsonWriter.WriteNull();
-        return;
-      }
-
-      var nvc = (NameValueCollection)value;
-      
-      bsonWriter.WriteStartArray();
-      foreach (var key in nvc.AllKeys)
-      {
-        foreach (var val in nvc.GetValues(key))
+        public override NameValueCollection Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
         {
-          bsonWriter.WriteStartArray();
-          bsonWriter.WriteString(key);
-          bsonWriter.WriteString(val);
-          bsonWriter.WriteEndArray();
+            var bsonReader = context.Reader;
+            var bsonType = bsonReader.GetCurrentBsonType();
+            if (bsonType == BsonType.Null)
+            {
+                bsonReader.ReadNull();
+                return null;
+            }
+
+            var nvc = new NameValueCollection();
+
+            bsonReader.ReadStartArray();
+            while (bsonReader.ReadBsonType() != BsonType.EndOfDocument)
+            {
+                bsonReader.ReadStartArray();
+                var key = bsonReader.ReadString();
+                var val = bsonReader.ReadString();
+                bsonReader.ReadEndArray();
+                nvc.Add(key, val);
+            }
+            bsonReader.ReadEndArray();
+
+            return nvc;
         }
-      }
-      bsonWriter.WriteEndArray();
+
+        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, NameValueCollection value)
+        {
+            var bsonWriter = context.Writer;
+            if (value == null)
+            {
+                bsonWriter.WriteNull();
+                return;
+            }
+
+            var nvc = (NameValueCollection)value;
+
+            bsonWriter.WriteStartArray();
+            foreach (var key in nvc.AllKeys)
+            {
+                foreach (var val in nvc.GetValues(key))
+                {
+                    bsonWriter.WriteStartArray();
+                    bsonWriter.WriteString(key);
+                    bsonWriter.WriteString(val);
+                    bsonWriter.WriteEndArray();
+                }
+            }
+            bsonWriter.WriteEndArray();
+        }
     }
-    
-  }
 }
