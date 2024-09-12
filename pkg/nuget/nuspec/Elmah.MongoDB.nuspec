@@ -2,15 +2,15 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>elmah.mongodb.driver</id>
-    <version>1.4</version>
-    <title>ELMAH on MongoDB 2.x .NET Driver</title>
+    <version>2.0.0</version>
+    <title>ELMAH on MongoDB 2.28.0 .NET Driver</title>
     <authors>Brett Green</authors>
     <owners>Brett Green</owners>
     <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
     <projectUrl>https://github.com/brettwgreen/elmah-mongodb</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Mongo Wrapper for Elmah using the Mongo 2.1 .NET Driver (Forked from CaptainCodeman's version which only works with legacy driver)</description>
-    <summary>Mongo Wrapper for Elmah using the Mongo 2.1 .NET Driver</summary>
+    <description>Mongo Wrapper for Elmah using the Mongo 2.28.0+ .NET Driver (Forked from CaptainCodeman's version which only works with legacy driver)</description>
+    <summary>Mongo Wrapper for Elmah using the Mongo 2.28.0+ .NET Driver</summary>
     <language>en-US</language>
     <tags>mongodb elmah error logging unhandled exception</tags>
     <dependencies>
