@@ -179,7 +179,7 @@ namespace Elmah
             var id = ObjectId.GenerateNewId();
             document.Add("_id", id);
 
-            _collection.InsertOne(document);
+            _collection!.InsertOne(document);
 
             return id.ToString();
         }
@@ -233,7 +233,7 @@ namespace Elmah
                 errorEntryList.Add(new ErrorLogEntry(this, id, error));
             }
 
-            return (int)_collection.CountDocuments(FilterDefinition<BsonDocument>.Empty);
+            return (int)_collection!.CountDocuments(FilterDefinition<BsonDocument>.Empty);
         }
 
         public static int GetCollectionLimit(IDictionary config)

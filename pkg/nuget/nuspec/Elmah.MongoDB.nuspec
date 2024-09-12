@@ -15,7 +15,7 @@
     <tags>mongodb elmah error logging unhandled exception</tags>
     <dependencies>
       <dependency id="elmah" version="1.2.2" />
-      <dependency id="MongoDB.Driver" version="2.1" />
+      <dependency id="MongoDB.Driver" version="2.28.0" />
     </dependencies>
   </metadata>
 </package>
